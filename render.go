@@ -1,8 +1,10 @@
 package staticbackend
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,9 +19,12 @@ var (
 	views map[string]*template.Template
 )
 
+//go:embed templates
+var templFS embed.FS
+
 func loadTemplates() error {
 	var partials []string
-	entries, err := os.ReadDir("./templates/partials")
+	entries, err := fs.ReadDir(templFS, "./templates/partials")
 	if err != nil {
 		return err
 	}

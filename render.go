@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,14 +16,14 @@ import (
 
 var (
 	views map[string]*template.Template
-)
 
-//go:embed templates
-var templFS embed.FS
+	//go:embed templates
+	templFS embed.FS
+)
 
 func loadTemplates() error {
 	var partials []string
-	entries, err := fs.ReadDir(templFS, "./templates/partials")
+	entries, err := fs.ReadDir(templFS, "partials")
 	if err != nil {
 		return err
 	}
@@ -37,7 +36,7 @@ func loadTemplates() error {
 
 	views = make(map[string]*template.Template)
 
-	tmpls, err := os.ReadDir("./templates")
+	tmpls, err := fs.ReadDir(templFS, "templates")
 	if err != nil {
 		return err
 	}

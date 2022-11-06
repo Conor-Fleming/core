@@ -61,8 +61,7 @@ func (database *Database) add(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, _ := ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
 
 	var v interface{}
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
@@ -92,8 +91,7 @@ func (database *Database) bulkAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, _ := ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
 
 	var v []interface{}
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
@@ -124,8 +122,7 @@ func (database *Database) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, _ := ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
 
 	result, err := backend.DB.ListDocuments(auth, conf.Name, col, params)
 	if err != nil {
@@ -136,6 +133,40 @@ func (database *Database) list(w http.ResponseWriter, r *http.Request) {
 	respond(w, http.StatusOK, result)
 }
 
+func (database *Database) count(w http.ResponseWriter, r *http.Request) {
+	var clauses [][]interface{}
+
+	if err := json.NewDecoder(r.Body).Decode(&clauses); err != nil {
+		// Here we don't return an error because filters are optional
+		database.log.Error().Err(err).Msg("error parsing body")
+	}
+
+	filter, err := backend.DB.ParseQuery(clauses)
+	if err != nil {
+		// Here we don't return an error because filters are optional
+		database.log.Error().Err(err).Msg("error parsing query")
+	}
+
+	conf, auth, err := middleware.Extract(r, true)
+	if err != nil {
+		database.log.Error().Err(err).Msg("error extracting conf and auth")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	col := getURLPart(r.URL.Path, 3)
+
+	result, err := backend.DB.Count(auth, conf.Name, col, filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	respond(w, http.StatusOK, map[string]int64{"count": result})
+}
+
 func (database *Database) get(w http.ResponseWriter, r *http.Request) {
 	conf, auth, err := middleware.Extract(r, true)
 	if err != nil {
@@ -143,11 +174,8 @@ func (database *Database) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	col, id := "", ""
-
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, r.URL.Path = ShiftPath(r.URL.Path)
-	id, r.URL.Path = ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
+	id := getURLPart(r.URL.Path, 3)
 
 	result, err := backend.DB.GetDocumentByID(auth, conf.Name, col, id)
 	if err != nil {
@@ -191,10 +219,7 @@ func (database *Database) query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var col string
-
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, r.URL.Path = ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
 
 	result, err := backend.DB.QueryDocuments(auth, conf.Name, col, filter, params)
 	if err != nil {
@@ -212,10 +237,7 @@ func (database *Database) getByIds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	col := ""
-
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, r.URL.Path = ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
 
 	var ids []string
 	if err := parseBody(r.Body, &ids); err != nil {
@@ -244,11 +266,8 @@ func (database *Database) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	col, id := "", ""
-
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, r.URL.Path = ShiftPath(r.URL.Path)
-	id, r.URL.Path = ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
+	id := getURLPart(r.URL.Path, 3)
 
 	var v interface{}
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
@@ -278,10 +297,7 @@ func (database *Database) bulkUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var col string
-
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, r.URL.Path = ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
 
 	var v struct {
 		UpdateFields map[string]any  `json:"update"`
@@ -342,11 +358,8 @@ func (database *Database) del(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	col, id := "", ""
-
-	_, r.URL.Path = ShiftPath(r.URL.Path)
-	col, r.URL.Path = ShiftPath(r.URL.Path)
-	id, r.URL.Path = ShiftPath(r.URL.Path)
+	col := getURLPart(r.URL.Path, 2)
+	id := getURLPart(r.URL.Path, 3)
 
 	count, err := backend.DB.DeleteDocument(auth, conf.Name, col, id)
 	if err != nil {

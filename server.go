@@ -2,6 +2,7 @@ package staticbackend
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +30,11 @@ const (
 	AppEnvDev  = "dev"
 	AppEnvProd = "prod"
 )
+
+// Embedding static resources from public directory
+//
+//go:embed public/*
+var resources embed.FS
 
 // Start starts the web server and all dependencies services
 func Start(c config.AppConfig, log *logger.Logger) {
@@ -215,6 +221,10 @@ func Start(c config.AppConfig, log *logger.Logger) {
 		fs := http.FileServer(http.Dir(os.TempDir()))
 		http.Handle("/localfs/", http.StripPrefix("/localfs/", fs))
 	}
+
+	// serving static resources
+	http.Handle("/css/", http.FileServer(http.FS(resources)))
+	http.Handle("/img/", http.FileServer(http.FS(resources)))
 
 	// ui routes
 	webUI := ui{log: log}
